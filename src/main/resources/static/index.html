@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>캐릭터 채팅 로비 (Lite)</title>
+  <style>
+    :root{--bg:#060914;--panel:rgba(16,22,46,.86);--line:#2f3f7a;--text:#e9ecff;--muted:#9ca6d6;--acc:#7c8cff}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,"Noto Sans KR",sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+    .bg-deco{position:fixed;inset:0;pointer-events:none;z-index:0;background:
+      radial-gradient(circle at 20% 20%, rgba(123,145,255,.28) 0 14%, transparent 35%),
+      radial-gradient(circle at 80% 18%, rgba(131,255,244,.20) 0 10%, transparent 32%),
+      radial-gradient(circle at 72% 78%, rgba(170,120,255,.22) 0 12%, transparent 36%),
+      radial-gradient(circle at 35% 75%, rgba(255,255,255,.10) 0 2px, transparent 3px),
+      radial-gradient(circle at 62% 48%, rgba(255,255,255,.12) 0 2px, transparent 3px),
+      radial-gradient(circle at 84% 64%, rgba(255,255,255,.14) 0 2px, transparent 3px),
+      radial-gradient(circle at 10% 58%, rgba(255,255,255,.13) 0 2px, transparent 3px),
+      linear-gradient(180deg,#090d1d 0%, #060914 45%, #03050d 100%);
+    }
+    .bg-stars{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(#fff 1px,transparent 1px),radial-gradient(#fff 1px,transparent 1px);background-size:3px 3px,4px 4px;background-position:0 0, 30px 50px;opacity:.18}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px;position:relative;z-index:1}
+    .top{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--panel);border:1px solid var(--line);padding:10px 12px;border-radius:12px;position:sticky;top:8px;z-index:10}
+    .logo{font-weight:800}.nav{display:flex;gap:8px;flex-wrap:wrap}
+    .nav button,.btn{border:1px solid #44508c;background:#20284a;color:#dde3ff;padding:7px 10px;border-radius:9px;cursor:pointer}
+    .nav button.active{background:#2a3676;border-color:#7081ff}
+    .menu{position:relative}.menuPop{display:none;position:absolute;right:0;top:38px;background:#1b2140;border:1px solid #44508c;border-radius:10px;padding:8px;min-width:210px}
+    .menuPop.show{display:block}.menuPop button{width:100%;text-align:left;margin:4px 0}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+    h2{font-size:17px;margin:0 0 8px} h3{font-size:14px;margin:14px 0 8px;color:#cfd6ff} .sub{font-size:12px;color:var(--muted)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.tab{display:none}.tab.show{display:block}
+    .list{display:grid;gap:8px}.item{padding:10px;border:1px solid #3b467d;border-radius:10px;background:#1a2142}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    input,textarea,select{width:100%;padding:9px;border-radius:8px;border:1px solid #3b467d;background:#121730;color:var(--text)}
+    textarea{min-height:80px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .pill{display:inline-block;padding:3px 8px;border:1px solid #5360a8;border-radius:999px;font-size:11px;color:#dce2ff}
+    .lore-list{display:grid;gap:6px;margin-top:8px}.lore-row{padding:8px;border:1px solid #3b467d;border-radius:8px;background:#171f3e;display:flex;justify-content:space-between;gap:8px}
+    .thumb{margin-top:8px;max-width:200px;max-height:200px;border:1px solid #3b467d;border-radius:8px;display:none}
+    .ok{color:#94f7c3}.warn{color:#ffd58d}
+    .lobby-tools{display:grid;grid-template-columns:1.2fr .8fr;gap:8px;margin-top:8px}
+    .char-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .char-card{padding:10px;border:1px solid #3b467d;border-radius:10px;background:#171f3e}
+    .char-card .meta{font-size:12px;color:var(--muted);margin-top:4px}
+    .char-card .actions{margin-top:6px}
+    .tag{display:inline-block;font-size:11px;padding:2px 6px;border:1px solid #4d5aa1;border-radius:999px;margin-right:4px;margin-top:4px}
+    @media (max-width:900px){.char-grid{grid-template-columns:1fr 1fr}.lobby-tools{grid-template-columns:1fr}}
+    @media (max-width:760px){.row{grid-template-columns:1fr}.char-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="bg-deco"></div>
+<div class="bg-stars"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">LunaLobby Lite</div>
+    <nav class="nav" id="mainNav"></nav>
+    <div class="menu">
+      <button id="menuBtn">☰</button>
+      <div class="menuPop" id="menuPop">
+        <button class="btn" data-go="adult-basic">성인인증 ON/OFF</button>
+        <button class="btn" data-go="mypage">마이페이지</button>
+        <button class="btn" data-go="create">제작</button>
+        <button class="btn" data-go="mychat">내 채팅</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="tab show" id="home">
+        <h2>홈 로비</h2>
+        <p class="sub">저사양용 로비 메인. 자주 쓰는 영역을 한 화면에서 바로 이동.</p>
+
+        <div class="row">
+          <div class="item">
+            <b>🎯 빠른 시작</b>
+            <div class="actions">
+              <button class="btn" onclick="go('new')">신작 보러가기</button>
+              <button class="btn" onclick="go('rank')">랭킹 보러가기</button>
+              <button class="btn" onclick="go('mychat')">내 채팅 이어하기</button>
+            </div>
+          </div>
+          <div class="item">
+            <b>👤 내 상태</b>
+            <div class="sub">오늘 대화: 12회 · 잔여포인트: 12,400P</div>
+            <div class="sub">구독 제작자 새 글: 3개</div>
+            <div class="actions"><button class="btn" onclick="go('mypage')">마이페이지</button></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="item">
+            <b>📢 공지 미리보기</b>
+            <div class="sub">- 서버 점검: 매주 수요일 03:00~03:30</div>
+            <div class="sub">- 신규 이벤트: 좋아요 누적 보상 지급</div>
+            <div class="actions"><button class="btn" onclick="go('notice')">공지 전체보기</button></div>
+          </div>
+          <div class="item">
+            <b>🔥 실시간 인기</b>
+            <div class="sub">#연애 #학교 #판타지 #집사 #코치</div>
+            <div class="actions"><button class="btn" onclick="go('top')">상위권 보기</button><button class="btn" onclick="go('likes')">좋아요 작품</button></div>
+          </div>
+        </div>
+
+        <div class="item">
+          <b>🆕 오늘의 신작 추천</b>
+          <div class="sub">1) 달빛 도서관 사서 · 2) 냉정한 면접관 · 3) 전학생 룸메이트</div>
+          <div class="actions"><button class="btn" onclick="go('official')">공식 추천</button><button class="btn" onclick="go('new')">신작 탭으로</button></div>
+        </div>
+
+        <div class="item">
+          <b>🔎 캐릭터 찾기 (저사양 필터)</b>
+          <div class="lobby-tools">
+            <input id="lobbySearch" placeholder="이름/태그 검색 (예: 판타지, 연애)" />
+            <select id="lobbySort">
+              <option value="popular">정렬: 인기순</option>
+              <option value="new">정렬: 최신순</option>
+              <option value="like">정렬: 좋아요순</option>
+            </select>
+          </div>
+          <div id="charGrid" class="char-grid"></div>
+        </div>
+      </div>
+
+      <div class="tab" id="notice"><h2>공지사항</h2><div class="list"><div class="item">서버 점검: 매주 수요일 03:00~03:30</div></div></div>
+      <div class="tab" id="board"><h2>자유게시판</h2><div class="list"><div class="item">[잡담] 오늘 만든 캐릭터 공유해요</div><div class="item">[질문] 프롬프트 팁 있을까요?</div></div></div>
+      <div class="tab" id="signup"><h2>회원가입</h2><div class="row"><input placeholder="아이디"/><input placeholder="이메일"/></div><div class="row"><input placeholder="비밀번호" type="password"/><input placeholder="비밀번호 확인" type="password"/></div><div class="actions"><button class="btn">가입하기</button></div></div>
+      <div class="tab" id="login"><h2>로그인</h2><div class="row"><input placeholder="아이디/이메일"/><input placeholder="비밀번호" type="password"/></div><div class="actions"><button class="btn">로그인</button></div></div>
+      <div class="tab" id="official"><h2>공식</h2><div class="item">운영팀 추천 캐릭터 모음</div></div>
+      <div class="tab" id="new"><h2>신작</h2><div class="item">최근 7일 내 생성된 캐릭터</div></div>
+      <div class="tab" id="rank"><h2>랭킹</h2><div class="item">주간 TOP10 / 월간 TOP10</div></div>
+      <div class="tab" id="follow"><h2>팔로잉</h2><div class="item">내가 팔로우한 제작자/작품 목록</div></div>
+      <div class="tab" id="top"><h2>상위권</h2><div class="item">좋아요+대화량 기반 상위권</div></div>
+      <div class="tab" id="likes"><h2>좋아요 작품</h2><div class="item">내가 좋아요 누른 작품 보관함</div></div>
+      <div class="tab" id="mychat">
+        <h2>내 채팅 (API 없이 로컬 데모)</h2>
+        <div class="item">
+          <div id="chatBox" style="height:320px;overflow:auto;border:1px solid #3b467d;border-radius:10px;padding:10px;background:#121730"></div>
+          <div class="row" style="margin-top:8px">
+            <input id="chatInput" placeholder="메시지를 입력해줘" />
+            <button class="btn" id="chatSendBtn" type="button">전송</button>
+          </div>
+          <div class="actions">
+            <button class="btn" id="chatResetBtn" type="button">대화 초기화</button>
+          </div>
+          <div class="sub">※ API 연동 없음: 브라우저 로컬에서만 데모 응답이 동작해.</div>
+        </div>
+      </div>
+
+      <div class="tab" id="adult-basic">
+        <h2>성인인증 ON/OFF (기초 화면)</h2>
+        <div class="item">
+          <div class="sub">아주 기본 동작만 넣은 화면입니다.</div>
+          <div class="actions">
+            <button class="btn" id="adultOnBtn" type="button">성인인증 ON</button>
+            <button class="btn" id="adultOffBtn" type="button">성인인증 OFF</button>
+          </div>
+          <div id="adultStatus" class="sub" style="margin-top:8px">현재 상태: OFF</div>
+        </div>
+      </div>
+
+      <div class="tab" id="mypage">
+        <h2>마이페이지</h2>
+
+        <div class="row">
+          <div class="item">
+            <b>1) 내정보</b>
+            <div class="sub">닉네임: LunaUser01 · 이메일: user01@demo.com</div>
+            <div class="sub">가입날짜: 2026-02-27 · 인증여부: 이메일 인증 완료</div>
+            <div class="actions"><button class="btn" data-go="profile-edit">회원정보 수정</button><button class="btn" data-go="password-change">비밀번호 변경</button></div>
+          </div>
+          <div class="item">
+            <b>2) 포인트/패키지</b>
+            <div class="sub">잔여포인트: 12,400P</div>
+            <div class="sub">잔여 패키지: 채팅 320회 / 이미지 18회</div>
+            <div class="sub">이번 달 사용량: 채팅 74회 · 이미지 2회</div>
+            <div class="actions"><button class="btn" data-go="points">포인트 충전</button></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="item">
+            <b>3) 구독/제작자 페이지</b>
+            <div class="sub">구독한 제작자: 6명</div>
+            <div class="sub">최근 업데이트: 달빛작가 · 코치봇연구소</div>
+            <div class="actions"><button class="btn" data-go="subscriptions">구독목록 보기</button><button class="btn" data-go="creator-page">내 제작자 페이지</button></div>
+          </div>
+          <div class="item">
+            <b>4) 차단 관리</b>
+            <div class="sub">제작자 차단: 2명</div>
+            <div class="sub">태그 차단: #고어, #정치, #광고</div>
+            <div class="actions"><button class="btn" data-go="blocked-users">차단 목록 관리</button><button class="btn" data-go="blocked-tags">태그 편집</button></div>
+          </div>
+        </div>
+
+        <div class="item">
+          <b>5) 제작 인센티브</b>
+          <div class="sub">누적 인센티브 포인트: 8,950P</div>
+          <div class="sub">이번 달 적립: +1,120P (채팅 유지율/좋아요/재방문 기반)</div>
+          <div class="sub">최근 적립내역: 02-26 +300P · 02-24 +420P · 02-20 +400P</div>
+          <div class="actions"><button class="btn" data-go="incentive-history">적립내역 전체 보기</button><button class="btn" data-go="settlement-request">정산 신청</button></div>
+        </div>
+
+        <div class="item">
+          <b>빠른 메뉴 설정</b>
+          <div class="sub">홈/랭킹/좋아요작품/내 채팅 중에서 하단 바로가기 3개 고정</div>
+          <div class="row">
+            <select><option>바로가기 1: 홈</option><option>랭킹</option><option>좋아요작품</option><option>내 채팅</option></select>
+            <select><option>바로가기 2: 랭킹</option><option>홈</option><option>좋아요작품</option><option>내 채팅</option></select>
+          </div>
+          <div class="row">
+            <select><option>바로가기 3: 내 채팅</option><option>홈</option><option>랭킹</option><option>좋아요작품</option></select>
+            <button class="btn" data-go="quick-menu">바로가기 저장</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab" id="profile-edit">
+        <h2>회원정보 수정</h2>
+        <div class="row"><input placeholder="닉네임" value="LunaUser01"/><input placeholder="이메일" value="user01@demo.com"/></div>
+        <div class="row"><input placeholder="휴대폰" value="010-0000-0000"/><input placeholder="생년월일" value="1999-01-01"/></div>
+        <textarea placeholder="자기소개">캐릭터 채팅과 세계관 제작을 좋아합니다.</textarea>
+        <div class="actions"><button class="btn">수정 저장</button><button class="btn" data-go="mypage">마이페이지로</button></div>
+      </div>
+
+      <div class="tab" id="password-change">
+        <h2>비밀번호 변경</h2>
+        <div class="row"><input type="password" placeholder="현재 비밀번호"/><input type="password" placeholder="새 비밀번호"/></div>
+        <div class="row"><input type="password" placeholder="새 비밀번호 확인"/><input placeholder="2차 인증 코드(선택)"/></div>
+        <div class="actions"><button class="btn">비밀번호 변경</button><button class="btn" data-go="mypage">마이페이지로</button></div>
+      </div>
+
+      <div class="tab" id="points">
+        <h2>포인트 충전 (기초단계)</h2>
+        <div class="item">
+          <div class="row"><select><option>10,000P</option><option>30,000P</option><option>50,000P</option></select><select><option>결제수단: 카드</option><option>결제수단: 계좌이체</option></select></div>
+          <div class="actions"><button class="btn">충전하기</button><button class="btn" data-go="mypage">마이페이지로</button></div>
+        </div>
+      </div>
+      <div class="tab" id="subscriptions"><h2>구독목록 보기</h2><div class="item">구독 제작자/만료일/알림 설정 관리</div><div class="actions"><button class="btn" data-go="creator-home">페이지 기초단계 만들기</button><button class="btn" data-go="mypage">마이페이지로</button></div></div>
+      <div class="tab" id="creator-page"><h2>내 제작자 페이지</h2><div class="item">대표작, 소개문, 공지 작성, 공개 범위 설정</div><div class="actions"><button class="btn" data-go="creator-home">페이지 기초단계 만들기</button><button class="btn" data-go="mypage">마이페이지로</button></div></div>
+      <div class="tab" id="creator-home">
+        <h2>제작자 홈페이지 (기초단계)</h2>
+        <div class="item">
+          <div class="sub">가장 기본 요소만 있는 샘플 페이지</div>
+          <div class="row">
+            <input id="homeTitle" placeholder="홈페이지 제목" value="나의 제작자 홈"/>
+            <input id="homeIntro" placeholder="한줄 소개" value="환영합니다 👋"/>
+          </div>
+          <textarea id="homeNotice" placeholder="공지사항">첫 방문 환영! 신작은 매주 업로드됩니다.</textarea>
+          <div class="actions">
+            <button class="btn" id="homeSaveBtn" type="button">저장</button>
+            <button class="btn" data-go="creator-page">내 제작자 페이지로</button>
+          </div>
+          <div id="homeSaveMsg" class="sub"></div>
+        </div>
+      </div>
+      <div class="tab" id="blocked-users">
+        <h2>차단 목록 관리 (기초단계)</h2>
+        <div class="item">
+          <div class="row"><input placeholder="차단할 사용자 ID"/><button class="btn">차단 추가</button></div>
+          <div class="sub">예시 목록: user_123, creator_demo</div>
+          <div class="actions"><button class="btn" data-go="mypage">마이페이지로</button></div>
+        </div>
+      </div>
+      <div class="tab" id="blocked-tags">
+        <h2>태그 편집 (기초단계)</h2>
+        <div class="item">
+          <div class="row"><input placeholder="차단 태그 입력 (예: 고어)"/><button class="btn">태그 추가</button></div>
+          <div class="sub">현재 태그: #고어, #정치, #광고</div>
+          <div class="actions"><button class="btn" data-go="mypage">마이페이지로</button></div>
+        </div>
+      </div>
+      <div class="tab" id="incentive-history">
+        <h2>적립내역 전체 보기 (기초단계)</h2>
+        <div class="item">
+          <div class="sub">02-26 +300P</div><div class="sub">02-24 +420P</div><div class="sub">02-20 +400P</div>
+          <div class="actions"><button class="btn" data-go="mypage">마이페이지로</button></div>
+        </div>
+      </div>
+      <div class="tab" id="settlement-request">
+        <h2>정산 신청 (기초단계)</h2>
+        <div class="item">
+          <div class="row"><input placeholder="정산 계좌"/><input placeholder="신청 금액"/></div>
+          <div class="actions"><button class="btn">정산 신청</button><button class="btn" data-go="mypage">마이페이지로</button></div>
+        </div>
+      </div>
+      <div class="tab" id="quick-menu">
+        <h2>빠른 메뉴 설정 (기초단계)</h2>
+        <div class="item">
+          <div class="row"><select><option>홈</option><option>랭킹</option><option>좋아요작품</option><option>내 채팅</option></select><select><option>랭킹</option><option>홈</option><option>좋아요작품</option><option>내 채팅</option></select></div>
+          <div class="actions"><button class="btn">저장</button><button class="btn" data-go="mypage">마이페이지로</button></div>
+        </div>
+      </div>
+
+      <div class="tab" id="create">
+        <h2>내 캐릭터 제작 <span class="pill">저사양 최적화</span></h2>
+
+        <h3>1) 기본정보</h3>
+        <div class="row"><input id="cName" placeholder="캐릭터 명"/><input id="cOne" placeholder="한줄소개"/></div>
+        <textarea id="cDetail" placeholder="캐릭터 상세소개"></textarea>
+
+        <h3>2) 캐릭터 설정</h3>
+        <textarea id="cWorld" placeholder="배경 세계관"></textarea>
+        <div class="row">
+          <select id="cPrompt"><option>메인프롬프트 선택</option><option>감성형</option><option>코치형</option><option>지식형</option></select>
+          <input id="cIntro" placeholder="캐릭터 소개(짧게)"/>
+        </div>
+        <textarea id="cStart" placeholder="캐릭터 입장대사"></textarea>
+
+        <h3>3) 추가 데이터</h3>
+        <div class="row">
+          <select id="cLoreUse"><option value="off">로어북 사용 안함</option><option value="on">로어북 사용</option></select>
+          <select id="cImgUse"><option value="off">내부이미지 사용 안함</option><option value="on">내부이미지 사용</option></select>
+        </div>
+        <textarea id="cRule" placeholder="대화 진행시 AI 주의사항 및 로직"></textarea>
+
+        <h3>4) 로어북 추가 (Lite)</h3>
+        <div class="sub">권장: 최대 100개 · 항목당 650자 내외 (저사양/빠른 로딩)</div>
+        <div class="row"><input id="loreKey" placeholder="키워드 (예: 학교, 금지어, 세계설정)"/><input id="loreVal" placeholder="내용 요약"/></div>
+        <div class="actions"><button class="btn" id="addLoreBtn" type="button">로어북 항목 추가</button></div>
+        <div id="loreList" class="lore-list"></div>
+
+        <h3>5) 이미지 (로어북과 공통 경량 정책)</h3>
+        <div class="sub">최대 50장 등록 · 자동 512px 이하 리사이즈 · JPG 압축 저장</div>
+        <input id="imgFile" type="file" accept="image/*" multiple/>
+        <div id="thumbList" class="lore-list"></div>
+        <div id="imgInfo" class="sub"></div>
+
+        <h3>6) 기타 추천 옵션 (자동 추가)</h3>
+        <div class="row">
+          <select id="cSafe"><option>안전등급: 일반</option><option>안전등급: 15세</option><option>안전등급: 19세</option></select>
+          <select id="cLen"><option>응답 길이: 짧게</option><option>응답 길이: 보통</option><option>응답 길이: 자세히</option></select>
+        </div>
+        <div class="row"><input id="cTags" placeholder="태그 (쉼표 구분: 연애,학교,판타지)"/><input id="cSample" placeholder="샘플 질문 1개"/></div>
+
+        <div class="actions">
+          <button class="btn" id="saveDraftBtn" type="button">임시저장</button>
+          <button class="btn" id="makeBtn" type="button">캐릭터 생성</button>
+        </div>
+        <div id="saveMsg" class="sub"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const navItems=[
+  ['공지사항','notice'],['자유게시판','board'],['회원가입','signup'],['로그인','login'],['홈','home'],['공식','official'],['신작','new'],['랭킹','rank'],['팔로잉','follow'],['상위권','top'],['좋아요작품','likes']
+];
+const mainNav=document.getElementById('mainNav');
+const tabs=document.getElementById('tabs');
+const key='lunalobby-create-draft-v1';
+
+function go(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('show'));
+  document.getElementById(id)?.classList.add('show');
+  [...mainNav.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.go===id));
+}
+navItems.forEach(([label,id])=>{
+  const b=document.createElement('button'); b.textContent=label; b.dataset.go=id; b.onclick=()=>go(id); mainNav.appendChild(b);
+  const t=document.createElement('button'); t.className='btn'; t.textContent=label; t.onclick=()=>go(id); tabs.appendChild(t);
+});
+
+document.getElementById('menuBtn').onclick=()=>document.getElementById('menuPop').classList.toggle('show');
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{go(b.dataset.go);document.getElementById('menuPop').classList.remove('show');});
+document.querySelectorAll('[data-toast]').forEach(b=>b.onclick=()=>alert(b.dataset.toast));
+window.addEventListener('click',(e)=>{if(!e.target.closest('.menu'))document.getElementById('menuPop').classList.remove('show');});
+
+const lore=[];
+let imageDataList=[];
+const $=id=>document.getElementById(id);
+
+function renderLore(){
+  const box=$("loreList"); box.innerHTML='';
+  lore.forEach((x,i)=>{
+    const div=document.createElement('div'); div.className='lore-row';
+    div.innerHTML=`<div><b>${escapeHtml(x.k)}</b><div class="sub">${escapeHtml(x.v)}</div></div><button class="btn" data-i="${i}">삭제</button>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{lore.splice(Number(b.dataset.i),1);renderLore();});
+}
+function escapeHtml(s=''){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+$("addLoreBtn").onclick=()=>{
+  const k=$("loreKey").value.trim(), v=$("loreVal").value.trim();
+  if(!k||!v) return alert('키워드/내용을 입력해줘.');
+  if(lore.length>=100) return alert('로어북 최대 한도(100개) 도달.');
+  lore.push({k:k.slice(0,40),v:v.slice(0,650)});
+  $("loreKey").value=''; $("loreVal").value=''; renderLore();
+};
+
+$("imgFile").onchange=async(e)=>{
+  const files=Array.from(e.target.files||[]);
+  if(!files.length) return;
+  if(files.length>50){
+    alert('최대 50장까지 등록할 수 있어.');
+    return;
+  }
+
+  imageDataList=[];
+  const listEl=$("thumbList");
+  listEl.innerHTML='';
+
+  for(const f of files){
+    const data=await new Promise((resolve)=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=512; let w=img.width,h=img.height;
+        if(w>h&&w>max){h=Math.round(h*max/w);w=max}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max}
+        const c=document.createElement('canvas'); c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg',0.72));
+      };
+      img.src=URL.createObjectURL(f);
+    });
+    imageDataList.push(data);
+  }
+
+  imageDataList.forEach((src,idx)=>{
+    const row=document.createElement('div');
+    row.className='lore-row';
+    row.innerHTML=`<div>이미지 ${idx+1}</div><img src="${src}" class="thumb" style="display:block" alt="img-${idx+1}"/>`;
+    listEl.appendChild(row);
+  });
+
+  $("imgInfo").innerHTML=`<span class="ok">압축 완료</span> 총 ${imageDataList.length}장 등록됨`;
+};
+
+function collect(){
+  return {
+    name:$("cName").value.trim(), one:$("cOne").value.trim(), detail:$("cDetail").value.trim(),
+    world:$("cWorld").value.trim(), prompt:$("cPrompt").value, intro:$("cIntro").value.trim(), start:$("cStart").value.trim(),
+    loreUse:$("cLoreUse").value, imgUse:$("cImgUse").value, rule:$("cRule").value.trim(), lore:[...lore], images:[...imageDataList],
+    safe:$("cSafe").value, len:$("cLen").value, tags:$("cTags").value.trim(), sample:$("cSample").value.trim(),
+    updatedAt:new Date().toISOString()
+  };
+}
+
+function apply(d){
+  if(!d) return;
+  $("cName").value=d.name||''; $("cOne").value=d.one||''; $("cDetail").value=d.detail||'';
+  $("cWorld").value=d.world||''; $("cPrompt").value=d.prompt||'메인프롬프트 선택'; $("cIntro").value=d.intro||''; $("cStart").value=d.start||'';
+  $("cLoreUse").value=d.loreUse||'off'; $("cImgUse").value=d.imgUse||'off'; $("cRule").value=d.rule||'';
+  $("cSafe").value=d.safe||'안전등급: 일반'; $("cLen").value=d.len||'응답 길이: 짧게'; $("cTags").value=d.tags||''; $("cSample").value=d.sample||'';
+  lore.splice(0,lore.length,...(d.lore||[])); renderLore();
+  imageDataList=[...(d.images||[])];
+  const listEl=$("thumbList");
+  if(listEl){
+    listEl.innerHTML='';
+    imageDataList.forEach((src,idx)=>{
+      const row=document.createElement('div');
+      row.className='lore-row';
+      row.innerHTML=`<div>이미지 ${idx+1}</div><img src="${src}" class="thumb" style="display:block" alt="img-${idx+1}"/>`;
+      listEl.appendChild(row);
+    });
+  }
+  if(imageDataList.length){$("imgInfo").textContent=`저장된 이미지 ${imageDataList.length}장 불러옴`;}
+}
+
+$("saveDraftBtn").onclick=()=>{
+  const d=collect(); localStorage.setItem(key,JSON.stringify(d));
+  $("saveMsg").innerHTML='<span class="ok">임시저장 완료</span> (브라우저 로컬 저장)';
+};
+$("makeBtn").onclick=()=>{
+  const d=collect();
+  if(!d.name) return alert('캐릭터 명은 필수야.');
+  localStorage.setItem(key,JSON.stringify(d));
+  $("saveMsg").innerHTML='<span class="ok">캐릭터 생성 데이터 준비 완료</span> (다음 단계: 백엔드 API 연결)';
+};
+
+// ---- Lobby character grid (lite) ----
+const lobbyKey='lunalobby-lite-fav-v1';
+const lobbyData=[
+  {id:1,name:'달빛 도서관 사서',tags:['판타지','힐링'],likes:921,chat:3200,created:'2026-02-25'},
+  {id:2,name:'냉정한 면접관',tags:['코치','현실'],likes:740,chat:1800,created:'2026-02-26'},
+  {id:3,name:'전학생 룸메이트',tags:['학교','연애'],likes:1102,chat:4100,created:'2026-02-27'},
+  {id:4,name:'야근 탈출 PM',tags:['직장','코칭'],likes:488,chat:900,created:'2026-02-22'},
+  {id:5,name:'중세 기사단 멘토',tags:['판타지','모험'],likes:630,chat:1400,created:'2026-02-24'},
+  {id:6,name:'아침 루틴 트레이너',tags:['습관','동기'],likes:559,chat:1200,created:'2026-02-21'}
+];
+function favSet(){ try{return new Set(JSON.parse(localStorage.getItem(lobbyKey)||'[]'));}catch{return new Set();} }
+function saveFav(s){ localStorage.setItem(lobbyKey, JSON.stringify([...s])); }
+function score(x){ return x.likes + Math.floor(x.chat/10); }
+function renderLobby(){
+  const q=(($("lobbySearch")?.value)||'').trim().toLowerCase();
+  const sort=(($("lobbySort")?.value)||'popular');
+  let arr=lobbyData.filter(x=> !q || x.name.toLowerCase().includes(q) || x.tags.join(',').toLowerCase().includes(q));
+  if(sort==='new') arr.sort((a,b)=> b.created.localeCompare(a.created));
+  else if(sort==='like') arr.sort((a,b)=> b.likes-a.likes);
+  else arr.sort((a,b)=> score(b)-score(a));
+
+  const fav=favSet();
+  const box=$("charGrid"); if(!box) return;
+  box.innerHTML='';
+  arr.forEach(x=>{
+    const div=document.createElement('div'); div.className='char-card';
+    const tags=x.tags.map(t=>`<span class="tag">#${escapeHtml(t)}</span>`).join('');
+    const on=fav.has(x.id);
+    div.innerHTML=`<b>${escapeHtml(x.name)}</b>
+      <div class="meta">좋아요 ${x.likes} · 대화 ${x.chat} · 등록 ${x.created}</div>
+      <div>${tags}</div>
+      <div class="actions">
+        <button class="btn" data-open="${x.id}">대화 시작</button>
+        <button class="btn" data-fav="${x.id}">${on?'★ 즐겨찾기됨':'☆ 즐겨찾기'}</button>
+      </div>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>go('mychat'));
+  box.querySelectorAll('[data-fav]').forEach(b=>b.onclick=()=>{const id=Number(b.dataset.fav); const s=favSet(); s.has(id)?s.delete(id):s.add(id); saveFav(s); renderLobby();});
+}
+$("lobbySearch")?.addEventListener('input', renderLobby);
+$("lobbySort")?.addEventListener('change', renderLobby);
+
+// ---- Local chat demo (no API) ----
+const chatKey='lunalobby-local-chat-v1';
+let chatLog=[];
+function chatReply(msg=''){
+  if(/안녕|hello|hi/i.test(msg)) return '안녕! 😊 로컬 데모 채팅창이야. 원하는 설정을 말해줘.';
+  if(/로어|lore/i.test(msg)) return `현재 로어북은 최대 100개까지 추가 가능해.`;
+  if(/이미지|사진/i.test(msg)) return `이미지는 최대 50장 등록 가능해.`;
+  return `좋아, "${msg}" 확인했어. (데모 응답)`;
+}
+function renderChat(){
+  const box=$("chatBox"); if(!box) return;
+  box.innerHTML='';
+  chatLog.forEach(x=>{
+    const line=document.createElement('div');
+    line.style.margin='6px 0';
+    line.innerHTML=`<b>${x.role==='user'?'나':'캐릭터'}</b>: ${escapeHtml(x.text)}`;
+    box.appendChild(line);
+  });
+  box.scrollTop=box.scrollHeight;
+}
+function saveChat(){ localStorage.setItem(chatKey, JSON.stringify(chatLog)); }
+function sendChat(){
+  const input=$("chatInput"); if(!input) return;
+  const msg=input.value.trim();
+  if(!msg) return;
+  chatLog.push({role:'user',text:msg});
+  chatLog.push({role:'bot',text:chatReply(msg)});
+  input.value='';
+  saveChat();
+  renderChat();
+}
+$("chatSendBtn")?.addEventListener('click', sendChat);
+$("chatInput")?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendChat(); });
+$("chatResetBtn")?.addEventListener('click', ()=>{
+  chatLog=[];
+  saveChat();
+  renderChat();
+});
+
+// ---- Adult verify basic toggle ----
+const adultKey='lunalobby-adult-toggle-v1';
+let adultOn=false;
+try{adultOn=localStorage.getItem(adultKey)==='on';}catch{}
+function renderAdultStatus(){
+  const el=$("adultStatus");
+  if(!el) return;
+  el.textContent=`현재 상태: ${adultOn?'ON':'OFF'}`;
+}
+$("adultOnBtn")?.addEventListener('click', ()=>{
+  adultOn=true;
+  localStorage.setItem(adultKey,'on');
+  renderAdultStatus();
+});
+$("adultOffBtn")?.addEventListener('click', ()=>{
+  adultOn=false;
+  localStorage.setItem(adultKey,'off');
+  renderAdultStatus();
+});
+
+// ---- Creator homepage basic ----
+const creatorHomeKey='lunalobby-creator-home-v1';
+function loadCreatorHome(){
+  try{
+    const d=JSON.parse(localStorage.getItem(creatorHomeKey)||'null');
+    if(!d) return;
+    $("homeTitle").value=d.title||'';
+    $("homeIntro").value=d.intro||'';
+    $("homeNotice").value=d.notice||'';
+  }catch{}
+}
+$("homeSaveBtn")?.addEventListener('click', ()=>{
+  const data={
+    title:$("homeTitle")?.value?.trim()||'',
+    intro:$("homeIntro")?.value?.trim()||'',
+    notice:$("homeNotice")?.value?.trim()||''
+  };
+  localStorage.setItem(creatorHomeKey, JSON.stringify(data));
+  const msg=$("homeSaveMsg");
+  if(msg) msg.textContent='저장 완료 (브라우저 로컬)';
+});
+
+try{apply(JSON.parse(localStorage.getItem(key)||'null'));}catch{}
+try{chatLog=JSON.parse(localStorage.getItem(chatKey)||'[]');}catch{chatLog=[];}
+if(chatLog.length===0){
+  chatLog=[{role:'bot',text:'로컬 채팅 데모 준비 완료. 메시지를 입력해봐!'}];
+  saveChat();
+}
+renderChat();
+renderLobby();
+renderAdultStatus();
+loadCreatorHome();
+go('home');
+</script>
+</body>
+</html>
